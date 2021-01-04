@@ -9,6 +9,51 @@ function getRegionFilters() {
   return filters;
 }
 
+function getDailyVaccineData () {
+  const num_days_reqd = 60;
+  const days_before_now = 0;
+  const sheetname = "Daily Vaccinations";
+  const region = getRegionFilters();
+  const day_in_ms = 1000 * 60 * 60 * 24;
+  const now = new Date();
+  var tgt = new Date(now - days_before_now * day_in_ms); //go back n days from today
+  const end_tgt = new Date(tgt - num_days_reqd * day_in_ms);
+  var yy = tgt.getFullYear();
+  var mm = tgt.getMonth();
+  var dd = tgt.getDate();
+  var data_grid = [], columns =[], columns_set = false;
+  while (tgt > end_tgt) {
+    var mm_txt = twoDigitText(mm + 1);
+    var dd_txt = twoDigitText(dd);
+    Logger.log("getting data for " + yy + mm_txt + dd_txt);
+    var aUrl = "https://api.coronavirus.data.gov.uk/v1/data?filters=areaType=nation;date="+ yy + "-" + mm_txt + "-" + dd_txt + "&structure={%22date%22:%22date%22,%22areaName%22:%22areaName%22,%22newPeopleReceivingFirstDose%22:%22newPeopleReceivingFirstDose%22,%22newPeopleReceivingSecondDose%22:%22newPeopleReceivingSecondDose%22}";
+    var data = getJSON(aUrl);
+    if (data.length > 0) {        
+      for (var d in data) {
+        var data_row = [];
+        var cols = data[d];
+        for (var j in cols) {   
+          if (!columns_set) {
+            columns.push(j);
+          }
+          data_row.push(cols[j]);
+        }
+        columns_set = true;
+        data_grid.push(data_row);
+      }
+    }
+    //subtract a day
+    tgt = new Date(tgt - day_in_ms);
+    yy = tgt.getFullYear();
+    mm = tgt.getMonth();
+    dd = tgt.getDate(); 
+    
+    //help!
+    if (yy < 2020) break;
+  } //end of while loop
+  writeDataGridToSheet(data_grid, columns, sheetname);  
+}
+
 function getNHSTrustData() {
   const days_before_now = 0;
   const sheetname = "NHS Trust Data";
@@ -25,7 +70,7 @@ function getNHSTrustData() {
     var dd_txt = twoDigitText(dd);
     Logger.log("getting data for " + yy + mm_txt + dd_txt + " filter=" + region);
     var aUrl = "https://api.coronavirus.data.gov.uk/v1/data?filters=" + region + ";date="+ yy + "-" + mm_txt + "-" + dd_txt + 
-      "&structure={%22date%22:%22date%22,%22areaName%22:%22areaName%22,%22hospitalCases%22:%22hospitalCases%22,%22covidOccupiedMVBeds%22:%22covidOccupiedMVBeds%22,%22newPeopleReceivingFirstDose%22:%22newPeopleReceivingFirstDose%22,%22newPeopleReceivingSecondDose%22:%22newPeopleReceivingSecondDose%22,%22cumPeopleReceivingFirstDose%22:%22cumPeopleReceivingFirstDose%22,%22cumPeopleReceivingSecondDose%22:%22cumPeopleReceivingSecondDose%22}";
+      "&structure={%22date%22:%22date%22,%22areaName%22:%22areaName%22,%22hospitalCases%22:%22hospitalCases%22,%22covidOccupiedMVBeds%22:%22covidOccupiedMVBeds%22}";
     var data = getJSON(aUrl);
     if (data.length > 0) {
       for (var d in data) {
